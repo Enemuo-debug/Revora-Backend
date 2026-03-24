@@ -2,7 +2,10 @@ import "dotenv/config";
 import express, { Request, Response } from "express";
 import morgan from "morgan";
 import { dbHealth, closePool } from "./db/client";
+import { pool } from "./db/pool";
 import { createCorsMiddleware } from "./middleware/cors";
+import { createHealthRouter } from "./routes/health";
+import { requestIdMiddleware } from "./middleware/requestId";
 import {
   createMilestoneValidationRouter,
   DomainEventPublisher,
@@ -142,6 +145,7 @@ const milestoneValidationEventRepository =
 const domainEventPublisher = new ConsoleDomainEventPublisher();
 
 app.use(createCorsMiddleware());
+app.use(requestIdMiddleware());
 app.use(express.json());
 app.use(morgan("dev"));
 /**
@@ -161,8 +165,9 @@ apiRouter.use(
 );
 
 /**
- * @notice Operational route explicitly bypassing the API prefix boundary.
+ * @notice Operational routes explicitly bypassing the API prefix boundary.
  * @dev Used generically by load balancers and orchestrators without coupling them to specific versions.
+ * @security These endpoints are intentionally unauthenticated for infrastructure monitoring.
  */
 app.get("/health", async (_req: Request, res: Response) => {
   const db = await dbHealth();
@@ -172,6 +177,9 @@ app.get("/health", async (_req: Request, res: Response) => {
     db,
   });
 });
+
+// Enhanced health monitoring endpoints
+app.use(createHealthRouter(pool));
 
 apiRouter.get('/overview', (_req: Request, res: Response) => {
   res.json({
