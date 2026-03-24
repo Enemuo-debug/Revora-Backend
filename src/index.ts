@@ -12,6 +12,8 @@ import {
   MilestoneValidationEventRepository,
   VerifierAssignmentRepository,
 } from "./vaults/milestoneValidationRoute";
+import { createRevenueRoutes } from "./routes/revenueRoutes";
+import { pool } from "./db/pool";
 
 const app = express();
 const port = process.env.PORT ?? 3000;
@@ -159,6 +161,12 @@ apiRouter.use(
     domainEventPublisher,
   }),
 );
+
+/**
+ * @dev Integration of Revenue Report Ingestion capability.
+ * This wires up the repository, service, and handler for revenue reporting.
+ */
+apiRouter.use(createRevenueRoutes(pool));
 
 /**
  * @notice Operational route explicitly bypassing the API prefix boundary.
