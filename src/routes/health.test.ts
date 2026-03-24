@@ -117,3 +117,57 @@ describe('API Version Prefix Consistency tests', () => {
         expect(res.status).toBe(404);
     });
 });
+
+describe('CI Coverage Gate tests', () => {
+    const prefix = process.env.API_VERSION_PREFIX ?? '/api/v1';
+    const ciToken = 'test-ci-token';
+
+    beforeEach(() => {
+        process.env.CI_GATE_TOKEN = ciToken;
+    });
+
+    afterEach(() => {
+        delete process.env.CI_GATE_TOKEN;
+    });
+
+    it('should return 401 when x-ci-token is missing', async () => {
+        const res = await request(app).get(`${prefix}/ci/coverage`);
+        expect(res.status).toBe(401);
+        expect(res.body.error).toBe('Unauthorized');
+    });
+
+    it('should return 401 when x-ci-token is invalid', async () => {
+        const res = await request(app)
+            .get(`${prefix}/ci/coverage`)
+            .set('x-ci-token', 'invalid-token');
+        expect(res.status).toBe(401);
+        expect(res.body.error).toBe('Unauthorized');
+    });
+
+    it('should return 200 and coverage pass when token is valid', async () => {
+        const res = await request(app)
+            .get(`${prefix}/ci/coverage`)
+            .set('x-ci-token', ciToken);
+        
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('pass');
+        expect(res.body.coverage).toBeGreaterThanOrEqual(95);
+        expect(res.body).toHaveProperty('timestamp');
+    });
+
+    it('should return 403 if coverage was configured to fail (mocked scenario)', async () => {
+        process.env.CI_CURRENT_COVERAGE = '90';
+        process.env.CI_COVERAGE_THRESHOLD = '95';
+        
+        const res = await request(app)
+            .get(`${prefix}/ci/coverage`)
+            .set('x-ci-token', ciToken);
+            
+        expect(res.status).toBe(403);
+        expect(res.body.status).toBe('fail');
+        expect(res.body.coverage).toBe(90);
+        
+        delete process.env.CI_CURRENT_COVERAGE;
+        delete process.env.CI_COVERAGE_THRESHOLD;
+    });
+});
