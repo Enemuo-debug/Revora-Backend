@@ -9,6 +9,7 @@
     "migrate": "node src/db/migrate.js",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test": "jest",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {

@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { Request, Response } from "express";
 import morgan from "morgan";
 import { dbHealth, closePool } from "./db/client";
+import { pool } from "./db/pool";
 import { createCorsMiddleware } from "./middleware/cors";
 import {
   createMilestoneValidationRouter,
@@ -13,10 +14,44 @@ import {
   VerifierAssignmentRepository,
 } from "./vaults/milestoneValidationRoute";
 
+import { UserRepository } from "./db/repositories/userRepository";
+import { SessionRepository } from "./db/repositories/sessionRepository";
+import { UserRepositoryAdapter } from "./auth/login/userRepositoryAdapter";
+import { SessionRepositoryAdapter } from "./auth/login/sessionRepositoryAdapter";
+import { JwtIssuerAdapter } from "./auth/login/jwtIssuerAdapter";
+import { LoginService } from "./auth/login/loginService";
+import { createLoginRouter } from "./auth/login/loginRoute";
+
+import { RefreshTokenRepositoryAdapter } from "./auth/refresh/repositoryAdapter";
+import { JwtTokenServiceAdapter } from "./auth/refresh/tokenServiceAdapter";
+import { RefreshService } from "./auth/refresh/refreshService";
+import { createRefreshRouter } from "./auth/refresh/refreshRoute";
+
 const app = express();
 const port = process.env.PORT ?? 3000;
 const API_VERSION_PREFIX = process.env.API_VERSION_PREFIX ?? '/api/v1';
 const apiRouter = express.Router();
+
+// ── Dependency Injection ──────────────────────────────────────────────────
+const dbUserRepository = new UserRepository(pool);
+const dbSessionRepository = new SessionRepository(pool);
+
+// Login
+const loginUserRepoAdapter = new UserRepositoryAdapter(dbUserRepository);
+const loginSessionRepoAdapter = new SessionRepositoryAdapter(dbSessionRepository);
+const jwtIssuerAdapter = new JwtIssuerAdapter();
+const loginService = new LoginService(
+  loginUserRepoAdapter,
+  loginSessionRepoAdapter,
+  jwtIssuerAdapter
+);
+
+// Refresh
+const refreshRepoAdapter = new RefreshTokenRepositoryAdapter(dbSessionRepository);
+const tokenServiceAdapter = new JwtTokenServiceAdapter();
+const refreshService = new RefreshService(refreshRepoAdapter, tokenServiceAdapter);
+
+// ── In-Memory Repositories (Existing) ─────────────────────────────────────
 
 class InMemoryMilestoneRepository implements MilestoneRepository {
   constructor(private readonly milestones = new Map<string, Milestone>()) {}
@@ -152,6 +187,9 @@ apiRouter.use(
     domainEventPublisher,
   }),
 );
+
+apiRouter.use(createLoginRouter({ loginService }));
+apiRouter.use(createRefreshRouter({ refreshService }));
 
 app.get("/health", async (_req: Request, res: Response) => {
   const db = await dbHealth();
