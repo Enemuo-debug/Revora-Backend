@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express, { Request, Response } from "express";
 import morgan from "morgan";
-import { dbHealth, closePool } from "./db/client";
+import { dbHealth, closePool, pool } from "./db/client";
 import { createCorsMiddleware } from "./middleware/cors";
 import {
   createMilestoneValidationRouter,
@@ -12,6 +12,7 @@ import {
   MilestoneValidationEventRepository,
   VerifierAssignmentRepository,
 } from "./vaults/milestoneValidationRoute";
+import { createPasswordResetRouter } from "./routes/passwordReset";
 
 const app = express();
 const port = process.env.PORT ?? 3000;
@@ -159,6 +160,8 @@ apiRouter.use(
     domainEventPublisher,
   }),
 );
+
+apiRouter.use(createPasswordResetRouter(pool));
 
 /**
  * @notice Operational route explicitly bypassing the API prefix boundary.
