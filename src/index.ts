@@ -12,6 +12,9 @@ import {
   MilestoneValidationEventRepository,
   VerifierAssignmentRepository,
 } from "./vaults/milestoneValidationRoute";
+import { createReconciliationRouter } from "./routes/reconciliationRoutes";
+import { OfferingRepository } from "./db/repositories/offeringRepository";
+import { pool } from "./db/pool";
 
 const app = express();
 const port = process.env.PORT ?? 3000;
@@ -157,6 +160,16 @@ apiRouter.use(
     verifierAssignmentRepository,
     milestoneValidationEventRepository,
     domainEventPublisher,
+  }),
+);
+
+const offeringRepository = new OfferingRepository(pool);
+apiRouter.use(
+  "/reconciliation",
+  createReconciliationRouter({
+    db: pool,
+    offeringRepo: offeringRepository,
+    requireAuth,
   }),
 );
 
