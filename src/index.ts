@@ -15,6 +15,11 @@ import {
 
 const app = express();
 const port = process.env.PORT ?? 3000;
+/**
+ * @dev The global prefix applied to all business logic routers.
+ * Defaults to `/api/v1` if `process.env.API_VERSION_PREFIX` is not supplied.
+ * Crucial for preventing route conflict and ensuring reliable downstream tooling (e.g. AWS API Gateway handling).
+ */
 const API_VERSION_PREFIX = process.env.API_VERSION_PREFIX ?? '/api/v1';
 const apiRouter = express.Router();
 
@@ -139,8 +144,10 @@ const domainEventPublisher = new ConsoleDomainEventPublisher();
 app.use(createCorsMiddleware());
 app.use(express.json());
 app.use(morgan("dev"));
-app.use(
-app.use(morgan('dev'));
+/**
+ * @dev All API business routes are deliberately scoped under the target version prefix.
+ * This establishes an enforced boundary constraint preventing un-versioned fallback leaks.
+ */
 app.use(API_VERSION_PREFIX, apiRouter);
 
 apiRouter.use(
@@ -153,6 +160,10 @@ apiRouter.use(
   }),
 );
 
+/**
+ * @notice Operational route explicitly bypassing the API prefix boundary.
+ * @dev Used generically by load balancers and orchestrators without coupling them to specific versions.
+ */
 app.get("/health", async (_req: Request, res: Response) => {
   const db = await dbHealth();
   res.status(db.healthy ? 200 : 503).json({
@@ -162,7 +173,6 @@ app.get("/health", async (_req: Request, res: Response) => {
   });
 });
 
-app.get("/api/overview", (_req: Request, res: Response) => {
 apiRouter.get('/overview', (_req: Request, res: Response) => {
   res.json({
     name: "Stellar RevenueShare (Revora) Backend",
@@ -180,7 +190,11 @@ const shutdown = async (signal: string) => {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
-app.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`revora-backend listening on http://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`revora-backend listening on http://localhost:${port}`);
+  });
+}
+
+export default app;
