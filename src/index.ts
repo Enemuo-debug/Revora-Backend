@@ -25,26 +25,14 @@ const port = process.env.PORT ?? 3000;
  */
 const API_VERSION_PREFIX = process.env.API_VERSION_PREFIX ?? '/api/v1';
 
+// --- Repository Implementations ---
 class InMemoryMilestoneRepository implements MilestoneRepository {
-  constructor(private readonly milestones = new Map<string, Milestone>()) {}
-
-  private key(vaultId: string, milestoneId: string): string {
-    return `${vaultId}:${milestoneId}`;
-  }
-
-  async getByVaultAndId(
-    vaultId: string,
-    milestoneId: string,
-  ): Promise<Milestone | null> {
+  constructor(private readonly milestones = new Map<string, Milestone>()) { }
+  private key(vaultId: string, milestoneId: string): string { return `${vaultId}:${milestoneId}`; }
+  async getByVaultAndId(vaultId: string, milestoneId: string): Promise<Milestone | null> {
     return this.milestones.get(this.key(vaultId, milestoneId)) ?? null;
   }
-
-  async markValidated(input: {
-    vaultId: string;
-    milestoneId: string;
-    verifierId: string;
-    validatedAt: Date;
-  }): Promise<Milestone> {
+  async markValidated(input: { vaultId: string; milestoneId: string; verifierId: string; validatedAt: Date; }): Promise<Milestone> {
     const key = this.key(input.vaultId, input.milestoneId);
     const current = this.milestones.get(key);
 
@@ -65,12 +53,8 @@ class InMemoryMilestoneRepository implements MilestoneRepository {
 }
 
 class InMemoryVerifierAssignmentRepository implements VerifierAssignmentRepository {
-  constructor(private readonly assignments = new Map<string, Set<string>>()) {}
-
-  async isVerifierAssignedToVault(
-    vaultId: string,
-    verifierId: string,
-  ): Promise<boolean> {
+  constructor(private readonly assignments = new Map<string, Set<string>>()) { }
+  async isVerifierAssignedToVault(vaultId: string, verifierId: string): Promise<boolean> {
     return this.assignments.get(vaultId)?.has(verifierId) ?? false;
   }
 }
@@ -80,13 +64,7 @@ class InMemoryMilestoneValidationEventRepository
 {
   private readonly events: MilestoneValidationEvent[] = [];
   private counter = 0;
-
-  async create(input: {
-    vaultId: string;
-    milestoneId: string;
-    verifierId: string;
-    createdAt: Date;
-  }): Promise<MilestoneValidationEvent> {
+  async create(input: { vaultId: string; milestoneId: string; verifierId: string; createdAt: Date; }): Promise<MilestoneValidationEvent> {
     this.counter += 1;
     const event: MilestoneValidationEvent = {
       id: `validation-event-${this.counter}`,
@@ -102,11 +80,7 @@ class InMemoryMilestoneValidationEventRepository
 }
 
 class ConsoleDomainEventPublisher implements DomainEventPublisher {
-  async publish(
-    eventName: string,
-    payload: Record<string, unknown>,
-  ): Promise<void> {
-    // eslint-disable-next-line no-console
+  async publish(eventName: string, payload: Record<string, unknown>): Promise<void> {
     console.log(`[domain-event] ${eventName}`, payload);
   }
 }
