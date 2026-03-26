@@ -136,6 +136,9 @@ function createMilestoneDependencies() {
   };
 }
 
+apiRouter.use(createLoginRouter({ loginService }));
+apiRouter.use(createRefreshRouter({ refreshService }));
+
 /**
  * Main Express application entrypoint.
  *
