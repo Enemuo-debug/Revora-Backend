@@ -25,36 +25,25 @@ export interface UserRepository {
 }
 
 export interface SessionRepository {
-  /**
-   * Persist a new session and return its unique ID.
-   */
-  createSession(userId: string): Promise<string>;
-
-  /**
-   * Attach token binding metadata to the session after JWT issuance.
-   */
-  setSessionMetadata(sessionId: string, tokenHash: string, expiresAt: Date): Promise<void>;
-
-  /**
-   * Lookup a session for an active token check.
-   */
-  findSessionById(sessionId: string): Promise<{
+  /** Persist a new session. */
+  createSession(input: {
+    id: string;
     userId: string;
     tokenHash: string;
     expiresAt: Date;
-  } | null>;
+  }): Promise<void>;
 }
 
 // ── JWT helper ──────────────────────────────────────────────────────────
 
 export interface JwtIssuer {
   /**
-   * Create a signed JWT.
-   *
-   * The token payload should at minimum include the user ID, session ID,
-   * and role so downstream middleware can authorise requests.
+   * Create signed access and refresh tokens.
    */
-  sign(payload: { userId: string; sessionId: string; role: UserRole }): string;
+  sign(payload: { userId: string; sessionId: string; role: UserRole }): {
+    accessToken: string;
+    refreshToken: string;
+  };
 }
 
 // ── DTOs ────────────────────────────────────────────────────────────────
@@ -65,7 +54,8 @@ export interface LoginRequestBody {
 }
 
 export interface LoginSuccessResponse {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   user: {
     id: string;
     email: string;
